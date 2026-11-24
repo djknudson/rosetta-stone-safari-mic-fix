@@ -99,7 +99,7 @@ The [`tools`](tools) folder has the small diagnostics used to find the cause:
 This is a workaround. The real fixes belong to Rosetta Stone, which could reuse its first microphone stream instead of opening a second one, and to Apple, since Safari shouldn't deliver silence while reporting the stream as live. Status:
 
 - **Apple:** filed in Feedback Assistant as **FB25710748** (2026-11-24), with a system diagnostics bundle and the test-page readings. If you're affected, file your own report through [Feedback Assistant](https://feedbackassistant.apple.com) and mention FB25710748.
-- **Rosetta Stone:** being filed through their support form.
+- **Rosetta Stone:** reported through their [support form](https://www.rosettastone.com/support) (2026-11-24), with the diagnosis, the measurements, and three suggested fixes.
 
 ## Not affiliated
 
