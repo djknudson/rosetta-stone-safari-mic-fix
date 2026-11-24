@@ -28,8 +28,10 @@
 <pre id="log"></pre>
 <script>
 const ac = new AudioContext();
+// When served by the bundled repro server on localhost, also send readings to it (ignored otherwise).
+const report = (o) => { if (location.hostname === 'localhost') fetch('/log', {method:'POST', body: JSON.stringify(o)}).catch(()=>{}); };
 const tracks = {};
-const log = m => { document.getElementById('log').textContent += new Date().toISOString().slice(11,23) + '  ' + m + '\n'; };
+const log = m => { const line = new Date().toISOString().slice(11,23) + '  ' + m; document.getElementById('log').textContent += line + '\n'; report({log: line}); };
 function meter(name, track) {
   const an = ac.createAnalyser(); an.fftSize = 2048;
   ac.createMediaStreamSource(new MediaStream([track])).connect(an);
@@ -40,6 +42,7 @@ function meter(name, track) {
     an.getFloatTimeDomainData(buf); let r = 0; for (const v of buf) r += v * v;
     const db = 10 * Math.log10(r / buf.length + 1e-12);
     lab.textContent = db.toFixed(1) + ' dB  muted=' + track.muted + '  EC=' + track.getSettings().echoCancellation;
+    const now = performance.now(); if (!track._last || now - track._last > 250) { track._last = now; report({t: new Date().toISOString().slice(11,23), track: name, db: +db.toFixed(1), muted: track.muted, ec: track.getSettings().echoCancellation}); }
     bar.style.width = Math.max(0, Math.min(100, (db + 80) * 1.4)) + '%';
     requestAnimationFrame(tick);
   };

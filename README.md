@@ -38,7 +38,7 @@ Safari can load an extension folder directly for testing. Safari removes it afte
 4. In the **Extensions** tab, make sure **Rosetta Stone Mic Fix** is on, and allow it on rosettastone.com.
 5. Reload your lesson.
 
-So far the fix has been confirmed with the Xcode-built app (option 2). This temporary install loads the same files, but nobody has tested it on an affected Mac yet.
+So far the fix has been confirmed with the Xcode-built app (option 2). This temporary install loads the same files, but it hasn't been tested on an affected Mac yet.
 
 ### Option 2: build the app in Xcode (permanent)
 
@@ -67,14 +67,24 @@ Untick the extension in **Safari › Settings › Extensions**. If you built the
 
 ## Reproduce the underlying Safari behavior
 
-[`repro/index.html`](repro/index.html) opens two microphone streams the way Rosetta Stone does and shows the live level of each. Microphone access needs a secure page, so serve it from your own Mac:
+[`repro/index.html`](repro/index.html) opens two microphone streams the way Rosetta Stone does and shows the live level of each. Microphone access needs a secure page, so serve it from your own Mac. The bundled server also saves every reading to `repro/repro-results.jsonl`:
 
 ```sh
-cd repro
-python3 -m http.server 8000
+python3 repro/repro_server.py
 ```
 
-Then open <http://localhost:8000> in Safari. Click **Start A**, then **Start B**, and speak. On an affected Mac, B should stay near silent while A is running. This page isolates the pattern seen on rosettastone.com, but it hasn't yet been run on the affected Mac, so treat it as unconfirmed.
+Then open <http://localhost:8000> in Safari. Click **Start A**, then **Start B**, and talk continuously. Then click **Stop A**, and finally **Start B′**.
+
+Results on the affected Mac (2026-11-24; median level while talking):
+
+| Step | A (echo cancelled) | B (raw) | B′ (echo cancelled) |
+|---|---|---|---|
+| A only | −41 dB | | |
+| A and B | −43 dB | **−71 dB** | |
+| A stopped | | **−36 dB** | |
+| B′ started next to B | | **−69 dB** | −41 dB |
+
+The raw stream goes near-silent whenever any echo-cancelled stream is open, in either order, and Safari reports it as unmuted the whole time.
 
 ## Tools
 

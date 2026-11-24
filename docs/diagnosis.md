@@ -36,6 +36,19 @@ While stream A is open, **every raw reader of the built-in microphone gets near-
 | Rosetta Stone unmodified (`echoCancellation: false`) | near-silent | no |
 | Request changed to `echoCancellation: true` | −21 dB peak | **yes** |
 
+### Reproduced outside Rosetta Stone
+
+[`repro/index.html`](../repro/index.html) recreates the pattern on a plain local page. These are median levels while talking continuously, split at each step:
+
+| Step | A (`echoCancellation` on) | B (`echoCancellation` off) | B′ (`echoCancellation` on) |
+|---|---|---|---|
+| A only | −41.2 dB | | |
+| A and B | −43.1 dB | **−71.0 dB** (max −60.5) | |
+| A stopped, B alone | | **−36.4 dB** | |
+| B′ started next to B | | **−69.3 dB** | −41.2 dB |
+
+Track B reported `muted: false` in every step, and no `mute` event fired. The silence follows whichever echo-cancelled capture is open: it starts when one opens, whether that happens before or after the raw stream, and ends when none is left.
+
 ### Timeline from the system log
 
 ```
