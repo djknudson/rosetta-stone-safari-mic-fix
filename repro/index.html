@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dual getUserMedia Repro</title>
+<style>
+  :root { --bg:#fff; --fg:#111; --muted:#666; --bar:#2a7; --warn:#c33; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#111; --fg:#eee; --muted:#999; } }
+  :root[data-theme="dark"] { --bg:#111; --fg:#eee; --muted:#999; }
+  body { background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system, system-ui, sans-serif; margin:0 auto; padding:16px; max-width:720px; }
+  button { font:inherit; padding:8px 14px; margin:4px 8px 4px 0; }
+  .row { margin:14px 0; }
+  .meter { height:14px; background:#8884; border-radius:7px; overflow:hidden; }
+  .meter > div { height:100%; width:0; background:var(--bar); transition:width .1s; }
+  code, pre { font-size:13px; } pre { white-space:pre-wrap; color:var(--muted); }
+</style>
+</head>
+<body>
+<h1>Dual getUserMedia repro</h1>
+<p>Start A (echo-cancelled, default), then start B (<code>echoCancellation:false</code>), and speak. On the affected setup, B reads near-silence while A is live and still reports <code>muted:false</code>. Stop A and B recovers.</p>
+<button id="a">Start A (default / VPIO)</button>
+<button id="b">Start B (echoCancellation:false)</button>
+<button id="b2">Start B′ (echoCancellation:true)</button>
+<button id="stopA">Stop A</button>
+<div class="row">A: <span id="la">–</span><div class="meter"><div id="ma"></div></div></div>
+<div class="row">B: <span id="lb">–</span><div class="meter"><div id="mb"></div></div></div>
+<pre id="log"></pre>
+<script>
+const ac = new AudioContext();
+const tracks = {};
+const log = m => { document.getElementById('log').textContent += new Date().toISOString().slice(11,23) + '  ' + m + '\n'; };
+function meter(name, track) {
+  const an = ac.createAnalyser(); an.fftSize = 2048;
+  ac.createMediaStreamSource(new MediaStream([track])).connect(an);
+  const buf = new Float32Array(an.fftSize);
+  const lab = document.getElementById('l' + name), bar = document.getElementById('m' + name);
+  const tick = () => {
+    if (track.readyState === 'ended') { lab.textContent = 'ended'; bar.style.width = '0'; return; }
+    an.getFloatTimeDomainData(buf); let r = 0; for (const v of buf) r += v * v;
+    const db = 10 * Math.log10(r / buf.length + 1e-12);
+    lab.textContent = db.toFixed(1) + ' dB  muted=' + track.muted + '  EC=' + track.getSettings().echoCancellation;
+    bar.style.width = Math.max(0, Math.min(100, (db + 80) * 1.4)) + '%';
+    requestAnimationFrame(tick);
+  };
+  tick();
+  track.onmute = () => log(name + ' mute event'); track.onunmute = () => log(name + ' unmute event');
+}
+async function start(name, constraints) {
+  await ac.resume();
+  const s = await navigator.mediaDevices.getUserMedia(constraints);
+  const t = s.getAudioTracks()[0]; tracks[name] = t;
+  log(name + ' started ' + JSON.stringify(constraints) + ' -> ' + t.label + ' ' + JSON.stringify(t.getSettings()));
+  meter(name, t);
+}
+document.getElementById('a').onclick = () => start('a', { audio: true });
+document.getElementById('b').onclick = () => start('b', { audio: { echoCancellation: false } });
+document.getElementById('b2').onclick = () => start('b', { audio: { echoCancellation: true } });
+document.getElementById('stopA').onclick = () => { tracks.a && tracks.a.stop(); log('A stopped'); };
+</script>
+</body>
+</html>

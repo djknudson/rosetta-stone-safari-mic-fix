@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Rosetta Stone Mic Fix",
+  "version": "1.0",
+  "description": "Makes Rosetta Stone request echo-cancelled microphone audio so speech is heard on Macs where raw mic streams go silent.",
+  "content_scripts": [
+    {
+      "matches": ["*://*.rosettastone.com/*", "*://rosettastone.com/*"],
+      "js": ["loader.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    { "resources": ["mic-fix.js"], "matches": ["*://*.rosettastone.com/*", "*://rosettastone.com/*"] }
+  ]
+}
