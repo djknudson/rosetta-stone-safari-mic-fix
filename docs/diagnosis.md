@@ -71,7 +71,20 @@ Rewrite stream B's request to `echoCancellation: true` and drop the `goog*` keys
 
 - Safari 27.3 doesn't support `"world": "MAIN"` for content scripts (Apple's packager warned about it during conversion). So `extension/loader.js` adds `mic-fix.js` to the page's own script environment itself.
 - Rosetta Stone's Content Security Policy only allows scripts that carry its nonce (plus `'strict-dynamic'`). The loader first tries the extension's file URL. If that's blocked, it copies the nonce from one of the page's own `<script nonce>` elements and adds the fix inline.
-- Once the fix is active, the page's `<html>` element carries `data-rs-mic-fix="active"`.
+- The fix wraps `MediaDevices.prototype.getUserMedia`, and checks every 0.5 s that the wrapper is still in place. If anything replaces the method on the prototype, or hides it behind an unwrapped `getUserMedia` on `navigator.mediaDevices` itself, the fix wraps it again. `window.__rsMicFixReapplied` counts how often that has happened.
+- The page's `<html>` element carries `data-rs-mic-fix`. It reads `"active"` while the wrapper is in place and `"lost"` if it isn't. The most direct check is `navigator.mediaDevices.getUserMedia.__rsMicFix`, which is `true` when the fix is live.
+
+### Why version 1.0 stopped working
+
+Version 1.0 worked on 2026-11-24, then stopped on 2026-11-25. The extension was still enabled and the page still showed `data-rs-mic-fix="active"`, but speech wasn't recognized.
+
+Reloading a lesson and checking the wrapper about every 0.2 s showed what happened. Version 1.0 installed its wrapper as a property on the `navigator.mediaDevices` object itself. About 1.2 s into page load the wrapper was there. By 1.4 s, while the page loaded its next batch of scripts (62 → 71), the property had been removed. Calls then fell through to Safari's own `MediaDevices.prototype.getUserMedia`, so Rosetta Stone's raw request (`echoCancellation: false`, the same as the day before, from `__startMic` in its `sonic.js` 4.0.25) went through unchanged. The attribute still read `"active"` because 1.0 set it only once.
+
+No code that removes the property was found by reading the page's scripts, so the removal is indirect or obfuscated. macOS, Safari, and the extension's registration were the same as on 2026-11-24.
+
+Version 1.1 patches the prototype, which is what `sonic.js` calls, and adds the watchdog above. After a lesson reload on the affected Mac, the wrapper stayed in place at every check for about 8 s with no re-wraps needed, and a speaking prompt was recognized.
+
+The lesson: a marker set once only proves the fix loaded, not that it's still in place.
 
 ## Ruled out
 

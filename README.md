@@ -2,6 +2,8 @@
 
 A small Safari extension for the Mac. It fixes Rosetta Stone speaking activities that never hear you in Safari.
 
+**Version 1.1 (2026-11-25):** version 1.0 could stop working after Rosetta Stone's page finished loading. If you installed 1.0, update. See [Version history](#version-history).
+
 ## Is this your problem?
 
 You use Rosetta Stone's web app (rosettastone.com) in Safari on a Mac, and:
@@ -22,7 +24,7 @@ When rosettastone.com asks for the microphone, the extension changes the request
 
 - It runs only on rosettastone.com.
 - It makes no network requests and collects nothing.
-- The whole fix is about 20 lines: [`extension/mic-fix.js`](extension/mic-fix.js).
+- The whole fix is one short file: [`extension/mic-fix.js`](extension/mic-fix.js).
 
 The technical write-up is in [docs/diagnosis.md](docs/diagnosis.md).
 
@@ -56,10 +58,12 @@ If Safari doesn't list the extension, open **Safari › Settings › Developer**
 On a rosettastone.com page, open **Develop › Show Web Inspector › Console** and run:
 
 ```js
-document.documentElement.getAttribute('data-rs-mic-fix')
+navigator.mediaDevices.getUserMedia.__rsMicFix
 ```
 
-It should return `"active"`.
+It should return `true`. That means the fix is in place right now, not just that it loaded once.
+
+The page's `<html>` element also carries `data-rs-mic-fix`. It reads `"active"` while the fix is in place and `"lost"` if something has removed it. (In version 1.0 this attribute was set once and never updated, so it could say `"active"` after the fix had stopped working.)
 
 ## Uninstall
 
@@ -93,6 +97,25 @@ The [`tools`](tools) folder has the small diagnostics used to find the cause:
 - `probe.js` logs every microphone request a page makes and what Safari returns. Paste it into the Web Inspector console before a lesson starts.
 - `meter.swift` reads the raw microphone level from outside Safari: `swift tools/meter.swift 10`.
 - `ca.swift` lists audio input devices and which processes are using them.
+
+## Version history
+
+### 1.1 (2026-11-25)
+
+Version 1.0 stopped working on the affected Mac a day after it was released. The extension was still enabled and the page still said `data-rs-mic-fix="active"`, but speech went unrecognized again.
+
+The cause: 1.0 attached its fix directly to the page's `navigator.mediaDevices` object. About 1.2 seconds into loading a lesson the fix was in place. By 1.4 seconds, while the page loaded its next batch of scripts, it had been removed, so Rosetta Stone's raw microphone request went through unchanged. Rosetta Stone's request itself hadn't changed, and neither had macOS or Safari.
+
+Version 1.1 patches `MediaDevices.prototype.getUserMedia` instead, which is the method Rosetta Stone's audio code ends up calling. It also checks every half second and puts the fix back if anything replaces or hides it. On the affected Mac, after reloading a lesson, the fix stayed in place at every check, and speech was recognized again.
+
+To update:
+
+- **Temporary install (option 1):** download the repository again and add the new `extension` folder.
+- **Xcode build (option 2):** download or pull the latest code and run it from Xcode again, then reload your lesson.
+
+### 1.0 (2026-11-24)
+
+First release.
 
 ## Reports
 
